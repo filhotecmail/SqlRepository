@@ -1,0 +1,57 @@
+/*{ *********** MODULO CONTROLE DE ESTOQUE ******************
+  ANALISTA : CARLOS ALBERTO DIAS DA SILVA FILHO
+  DATA     : 11/02/2022
+  PROGRAMA : LEOPARD REPORT
+  OBSERVAÇÃO: GERA UM RESULTADO DETALHADO ANALÍTICO
+              DOS DEPARTAMENTOS CADASTRADOS CRUZANDO
+              INFORMAÇÕES DOS PRODUTOS E DA TABELA
+              DE MOVIMENTAÇÃO DO ESTOQUE
+
+***********************************************************}*/
+  WITH DEPTOREL(
+      DEPTOID,
+      DEPARTAMENTO,
+      QTDPRODUTOS,
+      QTDESTOQUE,
+      VLCUSTO,
+      VLTOTAL,
+      QTDENTRADAS,
+      QTDSAIDAS
+
+    ) AS(
+       SELECT
+          D.ID,
+          D.D002DEPTO,
+          COUNT(P.ID),
+          COALESCE(SUM(P.ESTQ_TOTAL),0),
+          COALESCE(SUM(P.ENTR_CUSTOFINAL * P.ESTQ_TOTAL),0),
+          COALESCE(SUM(P.SAID_VLVENDA * P.ESTQ_TOTAL),0),
+         MAX(COALESCE(
+                 (
+                SELECT  SUM(E.H05QTD) FROM  ESTQMOVIMENTO  E
+                WHERE E.H03CODITEM = P.CAD_CEAN13
+                AND E.H20DATAFISCAL BETWEEN :PDATEINI AND :PDATEFIM
+                AND E.H10TPMOV = 0
+                GROUP BY E.H03CODITEM )
+             ,0)),
+          MAX(COALESCE(
+              (SELECT  SUM(E.H05QTD) FROM  ESTQMOVIMENTO  E
+                WHERE E.H03CODITEM = P.CAD_CEAN13
+                AND E.H20DATAFISCAL BETWEEN :PDATEINI AND :PDATEFIM
+                AND E.H10TPMOV = 1),0
+             ))
+        FROM CADPRODUTOS P
+        JOIN DEPARTAMENTOS D ON ( D.ID = P.P19IDDEPTO )
+      GROUP BY D.ID, D.D002DEPTO
+      ORDER BY D.D002DEPTO ASC
+    )
+    SELECT
+      DEPTOID,
+      DEPARTAMENTO,
+      QTDPRODUTOS,
+      QTDESTOQUE,
+      VLCUSTO,
+      VLTOTAL,
+      QTDENTRADAS,
+      QTDSAIDAS
+    FROM  DEPTOREL
